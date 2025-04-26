@@ -54,7 +54,7 @@ const TaskList = () => {
           {statuses.map((status) => (
             <TaskColumn
               key={status}
-              title={status}
+              title={status}  
               tasks={tasks.filter((t) => t.status === status)}
               onEdit={handleEdit}
               onDelete={(id) => dispatch(deleteTask(id))}

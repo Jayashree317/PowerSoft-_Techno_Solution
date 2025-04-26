@@ -1,34 +1,31 @@
-import { createSlice, nanoid } from '@reduxjs/toolkit';
+import { createSlice } from "@reduxjs/toolkit";
 
-const initialState = [];
+const initialState = {
+  tasks: JSON.parse(localStorage.getItem("tasks")) || [],
+};
 
 const taskSlice = createSlice({
-  name: 'tasks',
+  name: "tasks",
   initialState,
   reducers: {
-    addTask: {
-      reducer: (state, action) => {
-        state.push(action.payload);
-      },
-      prepare: (task) => ({
-        payload: {
-          id: nanoid(),
-          status: 'Need to Do', 
-          ...task,
-        },
-      }),
+    addTask: (state, action) => {
+      state.tasks.push(action.payload);
     },
     updateTask: (state, action) => {
-      const index = state.findIndex(t => t.id === action.payload.id);
-      if (index !== -1) state[index] = action.payload;
+      const index = state.tasks.findIndex((t) => t.id === action.payload.id);
+      if (index !== -1) {
+        state.tasks[index] = action.payload;
+      }
     },
     deleteTask: (state, action) => {
-      return state.filter(task => task.id !== action.payload);
+      state.tasks = state.tasks.filter((task) => task.id !== action.payload);
     },
     moveTask: (state, action) => {
       const { taskId, status } = action.payload;
-      const task = state.find(t => t.id === taskId);
-      if (task) task.status = status;
+      const task = state.tasks.find((t) => t.id === taskId);
+      if (task) {
+        task.status = status;
+      }
     },
   },
 });

@@ -1,159 +1,198 @@
-import React, { useEffect, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { useForm, Controller } from "react-hook-form";
-import { yupResolver } from "@hookform/resolvers/yup";
-import * as yup from "yup";
-import { addTask, updateTask } from "./taskSlice";
+import React, { useState, useEffect } from "react";
+import { Container, Card, Row, Col } from "react-bootstrap";
 import {
+  TextField,
   Button,
+  Typography,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
-  FormHelperText,
-} from "@mui/material"; 
+} from "@mui/material";
+import { useForm, Controller } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
+import { useDispatch, useSelector } from "react-redux";
 import { toast } from "react-toastify";
-import { Form as BootstrapForm } from "react-bootstrap";
+import { addTask, updateTask } from "../../redux/slices/taskSlice";
+import { useNavigate, useParams } from "react-router-dom";
 
 const schema = yup.object().shape({
-  title: yup.string().required(),
-  description: yup.string().required(),
-  employee: yup
-    .array()
-    .min(1, "At least one employee must be assigned")
-    .required(),
-  eta: yup.date().required(),
-  referenceImage: yup.string().url().required(),
+  title: yup.string().required("Task Title is required"),
+  description: yup.string().required("Description is required"),
+  eta: yup.date().required("ETA is required"),
+  referenceImage: yup.string().url("Enter a valid URL").required("Reference Image URL is required"),
 });
 
-const TaskForm = ({ defaultValues, onClose, projectId }) => {
+export default function TaskForm({ defaultValues, onClose }) {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const { id } = useParams();
 
-  const allEmployees = useSelector((state) => state.employees || []);
-  const projectList = useSelector((state) => state.projects?.projects || []);
-
-  const assigned =
-    projectList.find((p) => p.id === projectId)?.assignedEmployees || [];
-
-  const employees = allEmployees.filter((e) => assigned.includes(e.email));
+  const employees = useSelector((state) => state.employees);
 
   const [selectedEmployees, setSelectedEmployees] = useState(
-    defaultValues?.employee || []
+    defaultValues?.assignedEmployees || []
   );
+  const [referenceImageUrl, setReferenceImageUrl] = useState(defaultValues?.referenceImage || "");
 
-  const {
-    register,
-    handleSubmit,
-    control,
-    formState: { errors },
-    setValue,
-  } = useForm({
-    defaultValues,
+  const { control, handleSubmit, setValue } = useForm({
     resolver: yupResolver(schema),
+    defaultValues: defaultValues
+      ? {
+          ...defaultValues,
+          eta: defaultValues.eta
+            ? new Date(defaultValues.eta).toISOString().split("T")[0]
+            : "",
+        }
+      : {
+          title: "",
+          description: "",
+          eta: "",
+          referenceImage: "",
+        },
   });
 
   useEffect(() => {
     if (defaultValues) {
-      setSelectedEmployees(defaultValues.employee || []);
+      setValue("title", defaultValues.title);
+      setValue("description", defaultValues.description);
+      setValue(
+        "eta",
+        defaultValues.eta ? new Date(defaultValues.eta).toISOString().split("T")[0] : ""
+      );
     }
-  }, [defaultValues]);
+  }, [defaultValues, setValue]);
 
   const onSubmit = (data) => {
-    const taskId = defaultValues?.id || Date.now();
-    const taskData = { id: taskId, ...data, projectId };
+    const finalTask = {
+      ...data,
+      assignedEmployees: selectedEmployees,
+      referenceImage: referenceImageUrl || "https://via.placeholder.com/150",
+      eta: new Date(data.eta).toISOString().split("T")[0],
+    };
 
-    try {
-      if (defaultValues) {
-        dispatch(updateTask(taskData));
-        toast.success("Task updated successfully!");
-      } else {
-        dispatch(addTask(taskData));
-        toast.success("Task added successfully!");
-      }
+    let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
 
-      const currentTasks = JSON.parse(localStorage.getItem("tasks")) || [];
-      const updatedTasks = defaultValues
-        ? currentTasks.map((task) => (task.id === taskId ? taskData : task))
-        : [...currentTasks, taskData];
+    if (defaultValues) {
+      // update task logic
+    } else {
+      const newTask = { id: Date.now(), ...finalTask };
+      tasks.push(newTask);
 
-      localStorage.setItem("tasks", JSON.stringify(updatedTasks));
-      onClose();
-    } catch (error) {
-      toast.error("Something went wrong while saving the task.");
-      console.error(error);
+      dispatch(addTask(newTask)); // <--- dispatch to Redux
+      localStorage.setItem("tasks", JSON.stringify(tasks)); // <--- save to localStorage
+
+      toast.success("Task added successfully!");
     }
-  };
 
-  return (
-    <BootstrapForm onSubmit={handleSubmit(onSubmit)}>
-      <BootstrapForm.Group>
-        <BootstrapForm.Label>Task Title</BootstrapForm.Label>
-        <BootstrapForm.Control
-          {...register("title")}
-          isInvalid={errors.title}
-        />
-        <BootstrapForm.Control.Feedback type="invalid">
-          {errors.title?.message}
-        </BootstrapForm.Control.Feedback>
-      </BootstrapForm.Group>
-
-      <BootstrapForm.Group>
-        <BootstrapForm.Label>Description</BootstrapForm.Label>
-        <BootstrapForm.Control
-          {...register("description")}
-          isInvalid={errors.description}
-        />
-        <BootstrapForm.Control.Feedback type="invalid">
-          {errors.description?.message}
-        </BootstrapForm.Control.Feedback>
-      </BootstrapForm.Group>
-      <br />
-
-      <BootstrapForm.Group>
-        <FormControl fullWidth error={!!errors.employee}>
-          <InputLabel>Assign Employees</InputLabel>
-          <Select
-            multiple
-            value={selectedEmployees}
-            onChange={(e) => setSelectedEmployees(e.target.value)}
-            renderValue={(selected) => selected.join(", ")}
-          >
-            <MenuItem value="g@gmail.com">g@gmail.com</MenuItem>
-          </Select>
-          {errors.employee && (
-            <FormHelperText>{errors.employee.message}</FormHelperText>
-          )}
-        </FormControl>
-      </BootstrapForm.Group>
-
-      <BootstrapForm.Group>
-        <BootstrapForm.Label>ETA</BootstrapForm.Label>
-        <BootstrapForm.Control
-          type="date"
-          {...register("eta")}
-          isInvalid={errors.eta}
-        />
-        <BootstrapForm.Control.Feedback type="invalid">
-          {errors.eta?.message}
-        </BootstrapForm.Control.Feedback>
-      </BootstrapForm.Group>
-
-      <BootstrapForm.Group>
-        <BootstrapForm.Label>Reference Image URL</BootstrapForm.Label>
-        <BootstrapForm.Control
-          {...register("referenceImage")}
-          isInvalid={errors.referenceImage}
-        />
-        <BootstrapForm.Control.Feedback type="invalid">
-          {errors.referenceImage?.message}
-        </BootstrapForm.Control.Feedback>
-      </BootstrapForm.Group>
-
-      <Button className="mt-3" type="submit" variant="contained">
-        {defaultValues ? "Update Task" : "Add Task"}
-      </Button>
-    </BootstrapForm>
-  );
+    onClose ? onClose() : navigate("/tasks");
 };
 
-export default TaskForm;
+  
+
+  const availableEmployees = employees.filter(
+    (emp) => !defaultValues?.assignedEmployees?.includes(emp.email)
+  );
+
+  return (
+    <Container className="my-4">
+      <Card className="p-4 shadow">
+        <Typography variant="h5" gutterBottom>
+          {defaultValues ? "Edit Task" : "Add New Task"}
+        </Typography>
+
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <Row className="mb-3">
+            <Col md={6}>
+              <Controller
+                name="title"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    label="Task Title"
+                    fullWidth
+                    variant="outlined"
+                  />
+                )}
+              />
+            </Col>
+            <Col md={6}>
+              <Controller
+                name="description"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    label="Description"
+                    fullWidth
+                    variant="outlined"
+                  />
+                )}
+              />
+            </Col>
+          </Row>
+
+          <Row className="mb-3">
+            <Col md={6}>
+              <Controller
+                name="eta"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    type="date"
+                    label="ETA"
+                    fullWidth
+                    InputLabelProps={{ shrink: true }}
+                    variant="outlined"
+                  />
+                )}
+              />
+            </Col>
+          </Row>
+
+          <Row className="mb-3">
+            <Col>
+              <FormControl fullWidth>
+                <InputLabel>Assign Employees</InputLabel>
+                <Select
+                  multiple
+                  value={selectedEmployees}
+                  onChange={(e) => {
+                    setSelectedEmployees(e.target.value);
+                    setValue("assignedEmployees", e.target.value);
+                  }}
+                  renderValue={(selected) => selected.join(", ")}
+                >
+                  {availableEmployees.map((emp) => (
+                    <MenuItem key={emp.id} value={emp.email}>
+                      {emp.name} ({emp.email})
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Col>
+          </Row>
+
+          <Row className="mb-3">
+            <Col>
+              <TextField
+                label="Reference Image URL"
+                value={referenceImageUrl}
+                onChange={(e) => setReferenceImageUrl(e.target.value)}
+                fullWidth
+                variant="outlined"
+              />
+            </Col>
+          </Row>
+
+          <Button type="submit" variant="contained" color="primary">
+            {defaultValues ? "Update Task" : "Create Task"}
+          </Button>
+        </form>
+      </Card>
+    </Container>
+  );
+}
