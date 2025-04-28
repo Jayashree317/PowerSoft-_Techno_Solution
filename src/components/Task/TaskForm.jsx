@@ -21,7 +21,11 @@ const schema = yup.object().shape({
   title: yup.string().required("Task Title is required"),
   description: yup.string().required("Description is required"),
   eta: yup.date().required("ETA is required"),
-  referenceImage: yup.string().url("Enter a valid URL").required("Reference Image URL is required"),
+  referenceImage: yup
+    .string()
+    .url("Enter a valid URL")
+    .required("Reference Image URL is required"),
+  projectTitle: yup.string().required("Project is required"),
 });
 
 export default function TaskForm({ defaultValues, onClose }) {
@@ -30,27 +34,33 @@ export default function TaskForm({ defaultValues, onClose }) {
   const { id } = useParams();
 
   const employees = useSelector((state) => state.employees);
+  const projects = useSelector((state) => state.projects.projects);
 
   const [selectedEmployees, setSelectedEmployees] = useState(
     defaultValues?.assignedEmployees || []
   );
-  const [referenceImageUrl, setReferenceImageUrl] = useState(defaultValues?.referenceImage || "");
+
+  const statuses = [
+    "Need to Do",
+    "In Progress",
+    "Need for Test",
+    "Completed",
+    "Re-open",
+  ];
 
   const { control, handleSubmit, setValue } = useForm({
     resolver: yupResolver(schema),
-    defaultValues: defaultValues
-      ? {
-          ...defaultValues,
-          eta: defaultValues.eta
-            ? new Date(defaultValues.eta).toISOString().split("T")[0]
-            : "",
-        }
-      : {
-          title: "",
-          description: "",
-          eta: "",
-          referenceImage: "",
-        },
+    defaultValues: {
+      title: defaultValues?.title || "",
+      description: defaultValues?.description || "",
+      eta: defaultValues?.eta
+        ? new Date(defaultValues.eta).toISOString().split("T")[0]
+        : "",
+      status: defaultValues?.status || "Need to Do",
+      referenceImage: defaultValues?.referenceImage || "",
+      assignedEmployees: defaultValues?.assignedEmployees || [],
+      projectTitle: defaultValues?.projectTitle || "",
+    },
   });
 
   useEffect(() => {
@@ -59,7 +69,9 @@ export default function TaskForm({ defaultValues, onClose }) {
       setValue("description", defaultValues.description);
       setValue(
         "eta",
-        defaultValues.eta ? new Date(defaultValues.eta).toISOString().split("T")[0] : ""
+        defaultValues.eta
+          ? new Date(defaultValues.eta).toISOString().split("T")[0]
+          : ""
       );
     }
   }, [defaultValues, setValue]);
@@ -68,28 +80,40 @@ export default function TaskForm({ defaultValues, onClose }) {
     const finalTask = {
       ...data,
       assignedEmployees: selectedEmployees,
-      referenceImage: referenceImageUrl || "https://via.placeholder.com/150",
+      referenceImage: data.referenceImage || "https://via.placeholder.com/150",
       eta: new Date(data.eta).toISOString().split("T")[0],
     };
+
+    console.log("[DEBUG] Final Task Prepared:", finalTask);
 
     let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
 
     if (defaultValues) {
-      // update task logic
+      const updatedTask = { ...defaultValues, ...finalTask };
+      tasks = tasks.map((task) =>
+        task.id === defaultValues.id ? updatedTask : task
+      );
+      dispatch(updateTask(updatedTask));
+      toast.success("Task updated successfully!");
     } else {
       const newTask = { id: Date.now(), ...finalTask };
       tasks.push(newTask);
 
-      dispatch(addTask(newTask)); // <--- dispatch to Redux
-      localStorage.setItem("tasks", JSON.stringify(tasks)); // <--- save to localStorage
+      dispatch(addTask(newTask));
+
+      localStorage.setItem("tasks", JSON.stringify(tasks));
 
       toast.success("Task added successfully!");
     }
 
-    onClose ? onClose() : navigate("/tasks");
-};
-
-  
+    if (onClose) {
+      console.log("[DEBUG] Closing Modal");
+      onClose();
+    } else {
+      console.log("[DEBUG] Navigating to /tasks");
+      navigate("/tasks");
+    }
+  };
 
   const availableEmployees = employees.filter(
     (emp) => !defaultValues?.assignedEmployees?.includes(emp.email)
@@ -155,35 +179,90 @@ export default function TaskForm({ defaultValues, onClose }) {
 
           <Row className="mb-3">
             <Col>
-              <FormControl fullWidth>
-                <InputLabel>Assign Employees</InputLabel>
-                <Select
-                  multiple
-                  value={selectedEmployees}
-                  onChange={(e) => {
-                    setSelectedEmployees(e.target.value);
-                    setValue("assignedEmployees", e.target.value);
-                  }}
-                  renderValue={(selected) => selected.join(", ")}
-                >
-                  {availableEmployees.map((emp) => (
-                    <MenuItem key={emp.id} value={emp.email}>
-                      {emp.name} ({emp.email})
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <Controller
+                name="projectTitle"
+                control={control}
+                defaultValue={defaultValues?.projectTitle || ""}
+                render={({ field }) => (
+                  <FormControl fullWidth>
+                    <InputLabel>Project</InputLabel>
+                    <Select {...field} label="Project">
+                      {projects.map((project) => (
+                        <MenuItem key={project.id} value={project.title}>
+                          {project.title}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                )}
+              />
             </Col>
           </Row>
 
           <Row className="mb-3">
             <Col>
-              <TextField
-                label="Reference Image URL"
-                value={referenceImageUrl}
-                onChange={(e) => setReferenceImageUrl(e.target.value)}
-                fullWidth
-                variant="outlined"
+              <Controller
+                name="assignedEmployees"
+                control={control}
+                defaultValue={selectedEmployees}
+                render={({ field }) => (
+                  <FormControl fullWidth>
+                    <InputLabel>Assign Employees</InputLabel>
+                    <Select
+                      multiple
+                      {...field}
+                      onChange={(e) => {
+                        field.onChange(e.target.value);
+                        setSelectedEmployees(e.target.value);
+                      }}
+                      renderValue={(selected) => selected.join(", ")}
+                    >
+                      {availableEmployees.map((emp) => (
+                        <MenuItem key={emp.id} value={emp.email}>
+                          {emp.name} ({emp.email})
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                )}
+              />
+            </Col>
+          </Row>
+
+          <Row className="mb-3">
+            <Col>
+              <Controller
+                name="status"
+                control={control}
+                render={({ field }) => (
+                  <FormControl fullWidth>
+                    <InputLabel>Status</InputLabel>
+                    <Select {...field} label="Status">
+                      {statuses.map((status) => (
+                        <MenuItem key={status} value={status}>
+                          {status}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                )}
+              />
+            </Col>
+          </Row>
+
+          <Row className="mb-3">
+            <Col>
+              <Controller
+                name="referenceImage"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    label="Reference Image URL"
+                    fullWidth
+                    variant="outlined"
+                  />
+                )}
               />
             </Col>
           </Row>

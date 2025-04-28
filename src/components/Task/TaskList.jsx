@@ -1,11 +1,11 @@
 import React, { useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { DragDropContext } from "react-beautiful-dnd";
-import { moveTask, deleteTask } from "./taskSlice";
 import TaskColumn from "./TaskColumn";
 import ModalWrapper from "../Reusable/ModalWrapper";
 import TaskForm from "./TaskForm";
 import { Button } from "react-bootstrap";
+import { deleteTask, moveTask } from "../../redux/slices/taskSlice";
 
 const statuses = [
   "Need to Do",
@@ -20,7 +20,7 @@ const TaskList = () => {
         console.log('Redux state:', state);
         return state.tasks?.tasks || [];
       });
-      
+      const projects = useSelector((state) => state.projects);
   const [selectedTask, setSelectedTask] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const dispatch = useDispatch();
@@ -56,6 +56,7 @@ const TaskList = () => {
               key={status}
               title={status}  
               tasks={tasks.filter((t) => t.status === status)}
+              projects={projects}
               onEdit={handleEdit}
               onDelete={(id) => dispatch(deleteTask(id))}
             />

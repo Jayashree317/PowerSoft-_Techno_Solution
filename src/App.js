@@ -8,14 +8,20 @@ import ProjectList from "./components/Project/ProjectList";
 import ProjectForm from "./pages/ProjectForm";
 import TaskList from "./components/Task/TaskList";
 import TaskForm from "./components/Task/TaskForm";
-
 import { Container } from "react-bootstrap";
 import Header from "./components/common/Header";
-
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { useDispatch } from "react-redux";
+import { setTaskStatus } from "./redux/slices/taskSlice";
 function App() {
-  
+  // const dispatch = useDispatch();
+
+  // useEffect(() => {
+  //   const tasksFromStorage = JSON.parse(localStorage.getItem("tasks")) || [];
+  //   dispatch(setTasks(tasksFromStorage)); // Set tasks in Redux store
+  // }, [dispatch]);
+
   return (
     <Router>
       <Header />

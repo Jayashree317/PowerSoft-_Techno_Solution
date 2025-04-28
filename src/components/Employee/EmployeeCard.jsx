@@ -2,13 +2,15 @@ import React from 'react';
 import { Card, Button } from 'react-bootstrap';
 
 const EmployeeCard = ({ employee, onEdit, onDelete }) => {
-  const profileImg = employee.profileImage || 'https://via.placeholder.com/200?text=No+Image';
+  const profileImg = employee.profileImage && employee.profileImage !== '' 
+    ? employee.profileImage 
+    : 'https://via.placeholder.com/200?text=No+Image';
 
   return (
     <Card style={{ width: '18rem' }} className="mb-3 shadow">
       <Card.Img
         variant="top"
-        src={profileImg}
+        src={profileImg}  
         alt="Profile"
         style={{
           height: '200px',

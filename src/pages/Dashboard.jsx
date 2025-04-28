@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import { moveTask } from '../redux/slices/taskSlice';
-import { Card, Dropdown, Form, Row, Col } from 'react-bootstrap';
+import { Card, Form, Row, Col } from 'react-bootstrap';
 
 const columns = [
   'Need to Do',
@@ -16,9 +16,6 @@ const Dashboard = () => {
   const dispatch = useDispatch();
   const tasks = useSelector((state) => state.tasks.tasks || []);
   const projects = useSelector((state) => state.projects?.projects || []);
-
-  console.log('Projects:', projects);
-
   const [selectedProject, setSelectedProject] = useState('');
 
   const handleDragEnd = (result) => {
@@ -29,7 +26,7 @@ const Dashboard = () => {
   };
 
   const filteredTasks = selectedProject
-    ? tasks.filter(task => task.projectId === selectedProject)
+    ? tasks.filter(task => task.projectTitle === selectedProject)
     : tasks;
 
   const groupedTasks = columns.reduce((acc, column) => {
@@ -49,14 +46,13 @@ const Dashboard = () => {
         >
           <option value="">All Projects</option>
           {projects.map((project) => (
-            <option key={project.id} value={project.id}>
+            <option key={project.id} value={project.title}>
               {project.title}
             </option>
           ))}
         </Form.Select>
       </Form.Group>
 
-      {/* Drag & Drop Board */}
       <DragDropContext onDragEnd={handleDragEnd}>
         <Row>
           {columns.map((column) => (
@@ -80,10 +76,11 @@ const Dashboard = () => {
                             {...provided.dragHandleProps}
                           >
                             <Card.Body>
-                              <Card.Title>{task.title}</Card.Title>
+                              <Card.Text><strong>Task Title: </strong>{task.title}</Card.Text>
+                              <Card.Text><strong>Project: </strong>{task.projectTitle}</Card.Text> 
                               <Card.Text>
                                 <strong>ETA:</strong> {task.eta}<br />
-                                <strong>Employee:</strong> {task.employee}<br />
+                                <strong>Employee:</strong> {task.assignedEmployees}<br />
                               </Card.Text>
                               {task.referenceImage && (
                                 <img

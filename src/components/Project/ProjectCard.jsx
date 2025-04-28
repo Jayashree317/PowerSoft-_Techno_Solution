@@ -6,8 +6,8 @@ const ProjectCard = ({ project, onEdit, onDelete }) => {
     <Card className="mb-3">
       <Card.Img variant="top" src={project.logo} />
       <Card.Body>
-        <Card.Title>{project.title}</Card.Title>
-        <Card.Text>{project.description}</Card.Text>
+        <Card.Title>Project Title:{project.title}</Card.Title>
+        <Card.Text>Description:{project.description}</Card.Text>
         <Card.Text>
           <small>Start: {project.startDate}</small>
         </Card.Text>
